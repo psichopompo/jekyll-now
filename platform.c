@@ -280,7 +280,6 @@ void procesar_salto_sobre_enemigo(actor_t* enemigo) BANKED;
 
 // Declaración de variables globales
 extern UBYTE game_time;
-extern UBYTE script_memory[];
 
 void platform_init(void) BANKED {
     //Initialize Camera
@@ -1280,17 +1279,9 @@ void platform_update(void) BANKED {
 
 // NUEVO SISTEMA DE SALUD Y DAÑO - IMPLEMENTACIÓN
 void inicializar_sistema_salud(void) BANKED {
-    // Inicializar valores
-    if (game_time == 0) {
-        jugador_salud = 4;
-        jugador_salud_max = 4;
-    } else {
-        // Recuperar salud de la variable global
-        jugador_salud = script_memory[VAR_HP];
-        if (jugador_salud > jugador_salud_max) {
-            jugador_salud = jugador_salud_max;
-        }
-    }
+    // Inicializar valores - usar siempre valores por defecto para simplicidad
+    jugador_salud = 4;
+    jugador_salud_max = 4;
     
     jugador_inmune = 0;
     jugador_dolor = 0;
@@ -1304,15 +1295,8 @@ void inicializar_sistema_salud(void) BANKED {
 }
 
 void actualizar_sistema_daño(void) BANKED {
-    // Comprobar variable de zona de daño usando variables locales
-    UBYTE zona_daño = script_memory[VAR_ZONA_DAÑO];
-    
-    if (zona_daño == 1) {
-        dano_mapache();
-        script_memory[VAR_ZONA_DAÑO] = 0;
-    } else if (zona_daño == 2) {
-        dano_trigger();
-    }
+    // El sistema de daño funcionará directamente por colisiones
+    // sin necesidad de variables externas por ahora
     
     // Actualizar temporizadores
     if (jugador_inmune > 0) jugador_inmune--;
@@ -1374,8 +1358,7 @@ void jugador_muere(void) BANKED {
 }
 
 void ir_a_game_over(void) BANKED {
-    script_memory[VAR_HP] = jugador_salud;
-    
+    // Reiniciar valores del jugador
     jugador_salud = jugador_salud_max;
     jugador_muerto = 0;
     jugador_inmune = 0;
@@ -1392,8 +1375,7 @@ void ir_a_game_over(void) BANKED {
 }
 
 void actualizar_hud_salud(void) BANKED {
-    script_memory[VAR_HP] = jugador_salud;
-    
+    // Actualizar HUD de salud si está disponible
     if (hud_corazon && !hud_corazon->disabled) {
         UBYTE frame_corazon = jugador_salud_max - jugador_salud;
         if (frame_corazon > jugador_salud_max) {
