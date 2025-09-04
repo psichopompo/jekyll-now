@@ -742,21 +742,21 @@ void platform_update(void) BANKED {
             run_stage = 0;
             jump_type = 0;
             que_state = KNOCKBACK_STATE;
-            // Configurar velocidades de knockback
+            // Configurar velocidades de knockback más suaves
             if (PLAYER.dir == DIR_RIGHT) {
-                pl_vel_x = -3000;
+                pl_vel_x = -2000; // Reducido para menos paralización
             } else {
-                pl_vel_x = 3000;
+                pl_vel_x = 2000;
             }
-            pl_vel_y = -4000;
-            nocontrol_h = 20;
+            pl_vel_y = -3000; // Reducido para menos paralización
+            nocontrol_h = 10; // Reducido de 20 a 10 frames
         case KNOCKBACK_STATE: {
-            // Aplicar fricción horizontal
+            // Aplicar fricción horizontal más rápida
             if (pl_vel_x < 0) {
-                pl_vel_x += plat_air_dec;
+                pl_vel_x += plat_air_dec * 2; // Fricción doble
                 pl_vel_x = MIN(pl_vel_x, 0);
             } else if (pl_vel_x > 0) {
-                pl_vel_x -= plat_air_dec;
+                pl_vel_x -= plat_air_dec * 2; // Fricción doble
                 pl_vel_x = MAX(pl_vel_x, 0);
             }
             deltaX += pl_vel_x >> 8;
@@ -767,9 +767,10 @@ void platform_update(void) BANKED {
             deltaY += pl_vel_y >> 8;
             temp_y = PLAYER.pos.y;
             
-            // Salir del estado de knockback cuando toque el suelo
-            if (pl_vel_y >= 0 && on_ground) {
-                que_state = GROUND_INIT;
+            // Salir del estado de knockback más rápido
+            if (pl_vel_y >= 0) {
+                que_state = FALL_INIT; // Cambiar a FALL_INIT en lugar de GROUND_INIT
+                nocontrol_h = 0; // Restaurar control inmediatamente
             }
             
             nocollide = 0;
@@ -999,34 +1000,49 @@ void platform_update(void) BANKED {
                     }
                 }
             } else if (hit_actor->collision_group == GRUPO_ENEMIGO_MAPACHE) {
-                // Verificar si el jugador está saltando sobre el enemigo
-                if (pl_vel_y > 0 && temp_y + (PLAYER.bounds.bottom << 4) <= hit_actor->pos.y + (hit_actor->bounds.top << 4) + 64) {
-                    // Salto sobre enemigo - dar rebote
-                    procesar_salto_sobre_enemigo(hit_actor);
-                } else if (jugador_inmune == 0 && jugador_muerto == 0) {
-                    // Colisión lateral - recibir daño
-                    aplicar_dano_jugador(1, 1);
-                    que_state = KNOCKBACK_INIT;
+                // Solo procesar si el enemigo no está desactivado
+                if (!hit_actor->disabled) {
+                    // Verificar si el jugador está saltando sobre el enemigo (detección más precisa)
+                    if (pl_vel_y > 0 && 
+                        PLAYER.pos.y + (PLAYER.bounds.bottom << 4) <= hit_actor->pos.y + (hit_actor->bounds.top << 4) + 32 &&
+                        PLAYER.pos.x + (PLAYER.bounds.left << 4) < hit_actor->pos.x + (hit_actor->bounds.right << 4) &&
+                        PLAYER.pos.x + (PLAYER.bounds.right << 4) > hit_actor->pos.x + (hit_actor->bounds.left << 4)) {
+                        // Salto sobre enemigo - dar rebote
+                        procesar_salto_sobre_enemigo(hit_actor);
+                    } else if (jugador_inmune == 0 && jugador_muerto == 0) {
+                        // Colisión lateral - recibir daño
+                        aplicar_dano_jugador(1, 1);
+                    }
                 }
             } else if (hit_actor->collision_group == GRUPO_ENEMIGO_TRIGGER) {
-                // Verificar si el jugador está saltando sobre el enemigo
-                if (pl_vel_y > 0 && temp_y + (PLAYER.bounds.bottom << 4) <= hit_actor->pos.y + (hit_actor->bounds.top << 4) + 64) {
-                    // Salto sobre enemigo - dar rebote
-                    procesar_salto_sobre_enemigo(hit_actor);
-                } else if (jugador_inmune == 0 && jugador_muerto == 0) {
-                    // Colisión lateral - recibir daño
-                    aplicar_dano_jugador(1, 2);
-                    que_state = KNOCKBACK_INIT;
+                // Solo procesar si el enemigo no está desactivado
+                if (!hit_actor->disabled) {
+                    // Verificar si el jugador está saltando sobre el enemigo (detección más precisa)
+                    if (pl_vel_y > 0 && 
+                        PLAYER.pos.y + (PLAYER.bounds.bottom << 4) <= hit_actor->pos.y + (hit_actor->bounds.top << 4) + 32 &&
+                        PLAYER.pos.x + (PLAYER.bounds.left << 4) < hit_actor->pos.x + (hit_actor->bounds.right << 4) &&
+                        PLAYER.pos.x + (PLAYER.bounds.right << 4) > hit_actor->pos.x + (hit_actor->bounds.left << 4)) {
+                        // Salto sobre enemigo - dar rebote
+                        procesar_salto_sobre_enemigo(hit_actor);
+                    } else if (jugador_inmune == 0 && jugador_muerto == 0) {
+                        // Colisión lateral - recibir daño
+                        aplicar_dano_jugador(1, 2);
+                    }
                 }
             } else if (hit_actor->collision_group == GRUPO_ENEMIGO_JEFE) {
-                // Verificar si el jugador está saltando sobre el jefe
-                if (pl_vel_y > 0 && temp_y + (PLAYER.bounds.bottom << 4) <= hit_actor->pos.y + (hit_actor->bounds.top << 4) + 64) {
-                    // Salto sobre jefe - dar rebote
-                    procesar_salto_sobre_enemigo(hit_actor);
-                } else if (jugador_inmune == 0 && jugador_muerto == 0) {
-                    // Colisión lateral - recibir más daño
-                    aplicar_dano_jugador(2, 1);
-                    que_state = KNOCKBACK_INIT;
+                // Solo procesar si el enemigo no está desactivado
+                if (!hit_actor->disabled) {
+                    // Verificar si el jugador está saltando sobre el jefe (detección más precisa)
+                    if (pl_vel_y > 0 && 
+                        PLAYER.pos.y + (PLAYER.bounds.bottom << 4) <= hit_actor->pos.y + (hit_actor->bounds.top << 4) + 32 &&
+                        PLAYER.pos.x + (PLAYER.bounds.left << 4) < hit_actor->pos.x + (hit_actor->bounds.right << 4) &&
+                        PLAYER.pos.x + (PLAYER.bounds.right << 4) > hit_actor->pos.x + (hit_actor->bounds.left << 4)) {
+                        // Salto sobre jefe - dar rebote
+                        procesar_salto_sobre_enemigo(hit_actor);
+                    } else if (jugador_inmune == 0 && jugador_muerto == 0) {
+                        // Colisión lateral - recibir más daño
+                        aplicar_dano_jugador(2, 1);
+                    }
                 }
             }
             player_register_collision_with(hit_actor);
@@ -1245,12 +1261,12 @@ void platform_update(void) BANKED {
             // Mantener animación de dolor durante el knockback
             if (jugador_dolor > 0) {
                 establecer_animacion_jugador(ANIM_HURT);
+            } else {
+                // Si no hay dolor, usar animación normal de caída
+                basic_anim();
             }
-            if (que_state == GROUND_INIT){
-                pl_vel_y = 256;
-                // Salir del knockback cuando toque el suelo
-                que_state = GROUND_STATE;
-            }
+            
+            // El knockback se maneja en el switch principal, no aquí
             break;
     }
     
@@ -1375,6 +1391,20 @@ void ir_a_game_over(void) BANKED {
 }
 
 void actualizar_hud_salud(void) BANKED {
+    // Buscar el actor del HUD si no lo hemos encontrado aún
+    if (!hud_corazon) {
+        // Buscar un actor en la esquina superior izquierda (posición típica del HUD)
+        // Este es un enfoque simple, podrías mejorarlo según tu configuración específica
+        actor_t* actor_ptr = actors;
+        UBYTE i;
+        for (i = 0; i < MAX_ACTORS && actor_ptr; i++, actor_ptr++) {
+            if (actor_ptr->pos.x < 320 && actor_ptr->pos.y < 320 && !actor_ptr->disabled) {
+                hud_corazon = actor_ptr;
+                break;
+            }
+        }
+    }
+    
     // Actualizar HUD de salud si está disponible
     if (hud_corazon && !hud_corazon->disabled) {
         UBYTE frame_corazon = jugador_salud_max - jugador_salud;
@@ -1386,13 +1416,7 @@ void actualizar_hud_salud(void) BANKED {
     }
 }
 
-void aplicar_retroceso_mapache(void) BANKED {
-    que_state = KNOCKBACK_INIT;
-}
-
-void aplicar_retroceso_trigger(void) BANKED {
-    que_state = KNOCKBACK_INIT;
-}
+// Funciones de retroceso ahora integradas en aplicar_dano_jugador
 
 void activar_temblor_camara(UINT8 intensidad) BANKED {
     camera_shake_timer_local = intensidad;
@@ -1419,22 +1443,24 @@ void reproducir_sonido(UINT8 sonido) BANKED {
 void aplicar_dano_jugador(UINT8 cantidad, UINT8 tipo) BANKED {
     if (jugador_inmune > 0 || jugador_muerto) return;
     
+    // Asegurar que se reste la salud correctamente
     if (jugador_salud > cantidad) {
         jugador_salud -= cantidad;
     } else {
         jugador_salud = 0;
     }
     
+    // Aplicar efectos según el tipo de daño
     if (tipo == 1) { // Mapache
         jugador_inmune = INMUNIDAD_MAPACHE;
         jugador_dolor = DOLOR_MAPACHE;
         activar_temblor_camara(TEMBLOR_CAMARA_MAPACHE);
-        aplicar_retroceso_mapache();
+        que_state = KNOCKBACK_INIT; // Activar knockback directamente
     } else if (tipo == 2) { // Trigger
         jugador_inmune = INMUNIDAD_TRIGGER;
         jugador_dolor = DOLOR_TRIGGER;
         activar_temblor_camara(TEMBLOR_CAMARA_TRIGGER);
-        aplicar_retroceso_trigger();
+        que_state = KNOCKBACK_INIT; // Activar knockback directamente
     }
     
     actualizar_hud_salud();
@@ -1466,12 +1492,16 @@ void actualizar_parpadeo_invulnerabilidad(void) BANKED {
 }
 
 void procesar_salto_sobre_enemigo(actor_t* enemigo) BANKED {
-    pl_vel_y = -5000;
-    que_state = JUMP_INIT;
+    // Dar rebote inmediato al jugador
+    pl_vel_y = -4000;
+    que_state = FALL_INIT; // Usar FALL_INIT para mejor control
     
     if (enemigo && !enemigo->disabled) {
-        enemigo->hidden = TRUE;
+        // Iniciar animación de muerte del enemigo
+        actor_set_anim(enemigo, ANIM_DEATH);
+        // El enemigo se desactivará después de mostrar la animación
         enemigo->disabled = TRUE;
+        enemigo->hidden = TRUE;
     }
 }
 
