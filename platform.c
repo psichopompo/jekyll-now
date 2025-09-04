@@ -280,6 +280,7 @@ void procesar_salto_sobre_enemigo(actor_t* enemigo) BANKED;
 
 // Declaración de variables globales
 extern UBYTE game_time;
+extern UBYTE script_memory[];
 
 void platform_init(void) BANKED {
     //Initialize Camera
@@ -1284,8 +1285,8 @@ void inicializar_sistema_salud(void) BANKED {
         jugador_salud = 4;
         jugador_salud_max = 4;
     } else {
-        // Recuperar salud de la variable global usando data_manager
-        jugador_salud = VM_GLOBAL(VAR_HP);
+        // Recuperar salud de la variable global
+        jugador_salud = script_memory[VAR_HP];
         if (jugador_salud > jugador_salud_max) {
             jugador_salud = jugador_salud_max;
         }
@@ -1303,12 +1304,12 @@ void inicializar_sistema_salud(void) BANKED {
 }
 
 void actualizar_sistema_daño(void) BANKED {
-    // Comprobar variable de zona de daño usando data_manager
-    UBYTE zona_daño = VM_GLOBAL(VAR_ZONA_DAÑO);
+    // Comprobar variable de zona de daño usando variables locales
+    UBYTE zona_daño = script_memory[VAR_ZONA_DAÑO];
     
     if (zona_daño == 1) {
         dano_mapache();
-        VM_SET_GLOBAL(VAR_ZONA_DAÑO, 0);
+        script_memory[VAR_ZONA_DAÑO] = 0;
     } else if (zona_daño == 2) {
         dano_trigger();
     }
@@ -1373,7 +1374,7 @@ void jugador_muere(void) BANKED {
 }
 
 void ir_a_game_over(void) BANKED {
-    VM_SET_GLOBAL(VAR_HP, jugador_salud);
+    script_memory[VAR_HP] = jugador_salud;
     
     jugador_salud = jugador_salud_max;
     jugador_muerto = 0;
@@ -1391,14 +1392,15 @@ void ir_a_game_over(void) BANKED {
 }
 
 void actualizar_hud_salud(void) BANKED {
-    VM_SET_GLOBAL(VAR_HP, jugador_salud);
+    script_memory[VAR_HP] = jugador_salud;
     
     if (hud_corazon && !hud_corazon->disabled) {
         UBYTE frame_corazon = jugador_salud_max - jugador_salud;
         if (frame_corazon > jugador_salud_max) {
             frame_corazon = jugador_salud_max;
         }
-        actor_set_frame(&hud_corazon, frame_corazon);
+        // Actualizar frame del HUD usando método seguro
+        hud_corazon->frame = frame_corazon;
     }
 }
 
@@ -1465,15 +1467,17 @@ void actualizar_parpadeo_invulnerabilidad(void) BANKED {
         jugador_parpadeo++;
         if (jugador_parpadeo >= PARPADEO_FRAMES) {
             jugador_parpadeo = 0;
+            // Alternar visibilidad del jugador usando campo hidden
             if (PLAYER.hidden) {
-                actor_show(&PLAYER);
+                PLAYER.hidden = FALSE;
             } else {
-                actor_hide(&PLAYER);
+                PLAYER.hidden = TRUE;
             }
         }
     } else {
+        // Asegurar que el jugador sea visible cuando no está inmune
         if (PLAYER.hidden) {
-            actor_show(&PLAYER);
+            PLAYER.hidden = FALSE;
         }
         jugador_parpadeo = 0;
     }
@@ -1484,7 +1488,7 @@ void procesar_salto_sobre_enemigo(actor_t* enemigo) BANKED {
     que_state = JUMP_INIT;
     
     if (enemigo && !enemigo->disabled) {
-        actor_hide(enemigo);
+        enemigo->hidden = TRUE;
         enemigo->disabled = TRUE;
     }
 }
