@@ -98,9 +98,10 @@ BUGS:
 #define VAR_ZONA_DAÑO 12
 
 // Grupos de colisión para enemigos (ajustados para GB Studio)
-#define GRUPO_ENEMIGO_MAPACHE 2   // Enemigos tipo mapache
-#define GRUPO_ENEMIGO_TRIGGER 3   // Enemigos tipo trigger  
-#define GRUPO_ENEMIGO_JEFE 4      // Jefes con más daño
+#define GRUPO_ENEMIGO_NORMAL 2    // Enemigos normales (mapaches, etc.)
+#define GRUPO_ENEMIGO_JEFE 3      // Jefes con más daño
+// Nota: Los triggers se manejan individualmente, no por grupos de colisión
+// Grupo 1 podría ser para NPCs u otros actores interactivos
 
 //TEST
 script_state_t state_events[21];
@@ -162,12 +163,12 @@ UINT8 jugador_parpadeo = 0;
 actor_t* hud_corazon = NULL;
 
 // Constantes para el sistema de daño
-#define INMUNIDAD_MAPACHE 60    // 1 segundo
-#define DOLOR_MAPACHE 20        // 0.33 segundos
-#define INMUNIDAD_TRIGGER 60    // 1 segundo
-#define DOLOR_TRIGGER 15        // 0.25 segundos
-#define TEMBLOR_CAMARA_MAPACHE 20
-#define TEMBLOR_CAMARA_TRIGGER 15
+#define INMUNIDAD_NORMAL 60     // 1 segundo para enemigos normales
+#define DOLOR_NORMAL 20         // 0.33 segundos
+#define INMUNIDAD_JEFE 60       // 1 segundo para jefes
+#define DOLOR_JEFE 25           // 0.4 segundos (más dolor para jefes)
+#define TEMBLOR_CAMARA_NORMAL 20
+#define TEMBLOR_CAMARA_JEFE 30  // Más temblor para jefes
 #define PARPADEO_FRAMES 4       // Parpadear cada 4 frames
 
 // Variables temporales para el sistema de salud
@@ -999,7 +1000,7 @@ void platform_update(void) BANKED {
                         que_state = GROUND_INIT;
                     }
                 }
-            } else if (hit_actor->collision_group == GRUPO_ENEMIGO_MAPACHE) {
+            } else if (hit_actor->collision_group == GRUPO_ENEMIGO_NORMAL) {
                 // Solo procesar si el enemigo no está desactivado
                 if (!hit_actor->disabled) {
                     // Verificar si el jugador está saltando sobre el enemigo (detección más precisa)
@@ -1014,21 +1015,6 @@ void platform_update(void) BANKED {
                         aplicar_dano_jugador(1, 1);
                     }
                 }
-            } else if (hit_actor->collision_group == GRUPO_ENEMIGO_TRIGGER) {
-                // Solo procesar si el enemigo no está desactivado
-                if (!hit_actor->disabled) {
-                    // Verificar si el jugador está saltando sobre el enemigo (detección más precisa)
-                    if (pl_vel_y > 0 && 
-                        PLAYER.pos.y + (PLAYER.bounds.bottom << 4) <= hit_actor->pos.y + (hit_actor->bounds.top << 4) + 32 &&
-                        PLAYER.pos.x + (PLAYER.bounds.left << 4) < hit_actor->pos.x + (hit_actor->bounds.right << 4) &&
-                        PLAYER.pos.x + (PLAYER.bounds.right << 4) > hit_actor->pos.x + (hit_actor->bounds.left << 4)) {
-                        // Salto sobre enemigo - dar rebote
-                        procesar_salto_sobre_enemigo(hit_actor);
-                    } else if (jugador_inmune == 0 && jugador_muerto == 0) {
-                        // Colisión lateral - recibir daño
-                        aplicar_dano_jugador(1, 2);
-                    }
-                }
             } else if (hit_actor->collision_group == GRUPO_ENEMIGO_JEFE) {
                 // Solo procesar si el enemigo no está desactivado
                 if (!hit_actor->disabled) {
@@ -1041,7 +1027,7 @@ void platform_update(void) BANKED {
                         procesar_salto_sobre_enemigo(hit_actor);
                     } else if (jugador_inmune == 0 && jugador_muerto == 0) {
                         // Colisión lateral - recibir más daño
-                        aplicar_dano_jugador(2, 1);
+                        aplicar_dano_jugador(2, 2); // Tipo 2 para jefes
                     }
                 }
             }
@@ -1324,43 +1310,7 @@ void actualizar_sistema_daño(void) BANKED {
     }
 }
 
-void dano_mapache(void) BANKED {
-    if (jugador_inmune > 0 || jugador_muerto) return;
-    
-    if (jugador_salud > 0) {
-        jugador_salud -= 1;
-    }
-    
-    jugador_inmune = INMUNIDAD_MAPACHE;
-    jugador_dolor = DOLOR_MAPACHE;
-    activar_temblor_camara(TEMBLOR_CAMARA_MAPACHE);
-    aplicar_retroceso_mapache();
-    
-    actualizar_hud_salud();
-    
-    if (jugador_salud == 0) {
-        jugador_muere();
-    }
-}
-
-void dano_trigger(void) BANKED {
-    if (jugador_inmune > 0 || jugador_muerto) return;
-    
-    if (jugador_salud > 0) {
-        jugador_salud -= 1;
-    }
-    
-    jugador_inmune = INMUNIDAD_TRIGGER;
-    jugador_dolor = DOLOR_TRIGGER;
-    activar_temblor_camara(TEMBLOR_CAMARA_TRIGGER);
-    aplicar_retroceso_trigger();
-    
-    actualizar_hud_salud();
-    
-    if (jugador_salud == 0) {
-        jugador_muere();
-    }
-}
+// Estas funciones ya no se usan, el daño se maneja directamente en aplicar_dano_jugador
 
 void jugador_muere(void) BANKED {
     jugador_muerto = 1;
@@ -1451,15 +1401,15 @@ void aplicar_dano_jugador(UINT8 cantidad, UINT8 tipo) BANKED {
     }
     
     // Aplicar efectos según el tipo de daño
-    if (tipo == 1) { // Mapache
-        jugador_inmune = INMUNIDAD_MAPACHE;
-        jugador_dolor = DOLOR_MAPACHE;
-        activar_temblor_camara(TEMBLOR_CAMARA_MAPACHE);
+    if (tipo == 1) { // Enemigos normales (mapaches, etc.)
+        jugador_inmune = INMUNIDAD_NORMAL;
+        jugador_dolor = DOLOR_NORMAL;
+        activar_temblor_camara(TEMBLOR_CAMARA_NORMAL);
         que_state = KNOCKBACK_INIT; // Activar knockback directamente
-    } else if (tipo == 2) { // Trigger
-        jugador_inmune = INMUNIDAD_TRIGGER;
-        jugador_dolor = DOLOR_TRIGGER;
-        activar_temblor_camara(TEMBLOR_CAMARA_TRIGGER);
+    } else if (tipo == 2) { // Jefes
+        jugador_inmune = INMUNIDAD_JEFE;
+        jugador_dolor = DOLOR_JEFE;
+        activar_temblor_camara(TEMBLOR_CAMARA_JEFE);
         que_state = KNOCKBACK_INIT; // Activar knockback directamente
     }
     
